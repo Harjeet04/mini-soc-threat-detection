@@ -1,0 +1,13 @@
+[
+  {
+    "rule": "Repeated Authentication Failures",
+    "severity": "high",
+    "source_ip": "192.0.2.10",
+    "failure_count": 5,
+    "window_minutes": 5,
+    "first_seen": "2026-10-24T09:00:00",
+    "last_seen": "2026-10-24T09:00:20",
+    "reason": "5 failed logins within five minutes",
+    "status": "requires_investigation"
+  }
+]

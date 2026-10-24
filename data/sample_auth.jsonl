@@ -1,0 +1,7 @@
+{"timestamp":"2026-10-24T09:00:00","event_type":"authentication_failure","username":"analyst","source_ip":"192.0.2.10"}
+{"timestamp":"2026-10-24T09:00:05","event_type":"authentication_failure","username":"analyst","source_ip":"192.0.2.10"}
+{"timestamp":"2026-10-24T09:00:10","event_type":"authentication_failure","username":"analyst","source_ip":"192.0.2.10"}
+{"timestamp":"2026-10-24T09:00:15","event_type":"authentication_failure","username":"analyst","source_ip":"192.0.2.10"}
+{"timestamp":"2026-10-24T09:01:00","event_type":"authentication_success","username":"analyst","source_ip":"192.0.2.10"}
+{"timestamp":"2026-10-24T09:05:00","event_type":"authentication_success","username":"admin","source_ip":"192.0.2.20"}
+{"timestamp":"2026-10-24T09:00:20","event_type":"authentication_failure","username":"analyst","source_ip":"192.0.2.10"}
