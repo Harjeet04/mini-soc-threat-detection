@@ -10,25 +10,37 @@ THRESHOLD = 5
 WINDOW = timedelta(minutes=5)
 
 
-def main():
+def load_failures(log_file):
     failures = defaultdict(list)
+    invalid_count = 0
 
-    with LOG_FILE.open(encoding="utf-8") as file:
+    with log_file.open(encoding="utf-8") as file:
         for line_number, line in enumerate(file, start=1):
             try:
                 event = json.loads(line)
+
+                if not isinstance(event, dict):
+                    raise ValueError("Event must be a JSON object")
+
                 if event.get("event_type") != "authentication_failure":
                     continue
 
                 source_ip = event.get("source_ip")
                 timestamp = datetime.fromisoformat(event["timestamp"])
 
-                if source_ip:
-                    failures[source_ip].append(timestamp)
+                if not isinstance(source_ip, str) or not source_ip.strip():
+                    raise ValueError("Invalid source IP")
 
-            except (json.JSONDecodeError, KeyError, ValueError) as error:
-                print(f"Skipping invalid line {line_number}: {error}")
+                failures[source_ip].append(timestamp)
 
+            except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+                invalid_count += 1
+                print(f"Skipping invalid event on line {line_number}")
+
+    return failures, invalid_count
+
+
+def detect_bruteforce(failures):
     alerts = []
 
     for source_ip, timestamps in failures.items():
@@ -57,12 +69,20 @@ def main():
                 })
                 break
 
+    return alerts
+
+
+def main():
+    failures, invalid_count = load_failures(LOG_FILE)
+    alerts = detect_bruteforce(failures)
+
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_FILE.write_text(
         json.dumps(alerts, indent=2),
         encoding="utf-8",
     )
 
+    print(f"Invalid events skipped: {invalid_count}")
     print(f"Alerts generated: {len(alerts)}")
     print(f"Report saved to: {OUTPUT_FILE}")
 
