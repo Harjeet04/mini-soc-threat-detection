@@ -1,0 +1,61 @@
+{
+  "dataset": "cybersecurity_intrusion_data.csv",
+  "total_records": 9537,
+  "training_records": 7152,
+  "test_records": 2385,
+  "features": [
+    "network_packet_size",
+    "protocol_type",
+    "login_attempts",
+    "session_duration",
+    "encryption_used",
+    "ip_reputation_score",
+    "failed_logins",
+    "browser_type",
+    "unusual_time_access"
+  ],
+  "target": "attack_detected",
+  "accuracy": 0.8834381551362683,
+  "classification_report": {
+    "0": {
+      "precision": 0.8304761904761905,
+      "recall": 0.9916603487490523,
+      "f1-score": 0.9039391845196959,
+      "support": 1319.0
+    },
+    "1": {
+      "precision": 0.9864197530864197,
+      "recall": 0.7495309568480301,
+      "f1-score": 0.8518123667377399,
+      "support": 1066.0
+    },
+    "accuracy": 0.8834381551362683,
+    "macro avg": {
+      "precision": 0.9084479717813051,
+      "recall": 0.8705956527985412,
+      "f1-score": 0.8778757756287179,
+      "support": 2385.0
+    },
+    "weighted avg": {
+      "precision": 0.9001767513745151,
+      "recall": 0.8834381551362683,
+      "f1-score": 0.8806405733014295,
+      "support": 2385.0
+    }
+  },
+  "confusion_matrix": [
+    [
+      1308,
+      11
+    ],
+    [
+      267,
+      799
+    ]
+  ],
+  "confusion_matrix_labels": [
+    0,
+    1
+  ],
+  "note": "Evaluation on this dataset only. High scores may reflect how the dataset's attack labels were generated."
+}

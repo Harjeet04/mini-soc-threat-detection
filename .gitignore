@@ -4,3 +4,5 @@ __pycache__/
 .env
 *.log
 .DS_Store
+.pytest_cache/
+data/cybersecurity_intrusion_data.csv

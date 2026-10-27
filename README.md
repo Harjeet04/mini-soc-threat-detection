@@ -30,3 +30,55 @@ Early prototype. Real Windows event collection, automated tests, additional dete
 ## Disclaimer
 
 The included sample events are synthetic training data. This project is intended for defensive cybersecurity learning in an authorized lab.
+
+## Machine Learning Intrusion Detection
+
+The project includes a Random Forest classifier that analyzes session-level
+features and predicts whether a session is labeled as an attack.
+
+### Dataset
+
+- File: `cybersecurity_intrusion_data.csv`
+- Records: 9,537
+- Features include failed logins, login attempts, protocol type,
+  session duration, IP reputation score, and encryption type.
+- Target: `attack_detected`
+
+### Initial Evaluation
+
+Evaluated using a stratified 75/25 train-test split.
+
+| Metric | Initial result |
+|---|---:|
+| Accuracy | 88.3% |
+| Precision (attack class) | 98.6% |
+| Recall (attack class) | 75.0% |
+| F1-score (attack class) | 85.2% |
+
+Confusion matrix (rows = actual, columns = predicted):
+
+| | Predicted normal | Predicted attack |
+|---|---:|---:|
+| Actual normal | 1,308 | 11 |
+| Actual attack | 267 | 799 |
+
+### Limitations
+
+These results apply only to this dataset and split. The dataset's
+label-generation process has not been independently verified, and some
+features may be correlated with the target label. These metrics should
+not be interpreted as real-world SOC detection accuracy.
+
+### Run the Model
+
+```bash
+python scripts/detect_intrusions.py
+```
+
+The evaluation report is saved to `reports/intrusion_model_report.json`.
+
+### Run Tests
+
+```bash
+python -m pytest -v
+```
