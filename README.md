@@ -111,3 +111,37 @@ verified. Strong relationships between login features and attack
 labels may reflect genuine patterns or dataset-generation rules.
 These results are not evidence of equivalent performance on live
 production systems.
+
+## Threshold Evaluation
+
+The Random Forest model was evaluated at a probability threshold of 0.40.
+The threshold was selected using validation data before evaluating the
+held-out test set.
+
+### Held-out Test Results
+
+| Metric | Result |
+|---|---:|
+| Accuracy | 86.8% |
+| Attack precision | 93.4% |
+| Attack recall | 75.9% |
+| Attack F1-score | 84.3% |
+| False positives | 57 |
+| False negatives | 257 |
+
+Confusion matrix (rows = actual, columns = predicted):
+
+| | Predicted normal | Predicted attack |
+|---|---:|---:|
+| Actual normal | 1,262 | 57 |
+| Actual attack | 257 | 809 |
+
+### Interpretation
+
+The lower threshold increases sensitivity to attacks but also produces
+more false alerts. Threshold selection depends on the balance between
+missed attacks and analyst workload.
+
+These results apply only to this dataset and evaluation split. The
+dataset's label-generation process has not been independently verified,
+so the results should not be interpreted as real-world SOC accuracy.
