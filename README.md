@@ -82,3 +82,32 @@ The evaluation report is saved to `reports/intrusion_model_report.json`.
 ```bash
 python -m pytest -v
 ```
+
+## Model Comparison and Baseline Analysis
+
+All models were evaluated on the same stratified 75/25 train-test split
+with `random_state=42`.
+
+| Approach | Accuracy | Attack precision | Attack recall | Attack F1 |
+|---|---:|---:|---:|---:|
+| Rule: failed_logins >= 3 | 71.3% | 100.0% | 35.8% | 0.53 |
+| Random Forest (2 login features) | 79.7% | 100.0% | 54.5% | 0.71 |
+| Random Forest (all features) | 88.3% | 98.6% | 75.0% | 0.85 |
+| Random Forest (without login features) | 59.8% | 56.0% | 46.0% | 0.51 |
+
+### Interpretation
+
+The full-feature Random Forest performed best on this test split.
+Removing login-related features substantially reduced performance,
+indicating that these features carry significant predictive information.
+
+The simple threshold rule had high precision but low recall, missing
+many attack-labeled records.
+
+### Limitations
+
+The dataset's label-generation process has not been independently
+verified. Strong relationships between login features and attack
+labels may reflect genuine patterns or dataset-generation rules.
+These results are not evidence of equivalent performance on live
+production systems.
