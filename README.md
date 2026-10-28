@@ -145,3 +145,101 @@ missed attacks and analyst workload.
 These results apply only to this dataset and evaluation split. The
 dataset's label-generation process has not been independently verified,
 so the results should not be interpreted as real-world SOC accuracy.
+
+## ML-Based Intrusion Detection and Alert Generation
+
+The project includes a Random Forest classifier that analyzes session-level
+features and generates structured JSON alerts for sessions predicted as attacks.
+
+### Detection Pipeline
+
+1. Load the public intrusion detection dataset.
+2. Preprocess numeric and categorical features.
+3. Train a Random Forest classifier.
+4. Apply a probability threshold of 0.40.
+5. Generate structured alerts for predicted attacks.
+6. Save the alert report as JSON.
+7. Run automated tests to validate detection components and alert structure.
+
+### Dataset
+
+- Records: 9,537
+- Features include failed logins, login attempts, protocol type,
+  session duration, IP reputation score, and encryption type.
+- Target column: `attack_detected`
+- The raw CSV is excluded from Git by `.gitignore`.
+
+### Model Evaluation
+
+The model was evaluated using a stratified 75/25 train-test split.
+
+| Metric | Initial result |
+|---|---:|
+| Accuracy at threshold 0.40 | 86.8% |
+| Attack precision | 93.4% |
+| Attack recall | 75.9% |
+| Attack F1-score | 84.3% |
+| False positives | 57 |
+| False negatives | 257 |
+
+A separate five-fold stratified cross-validation experiment with the
+default classification threshold reported mean accuracy of 89.0% and
+mean attack F1-score of 86.2%.
+
+These results come from different evaluation procedures and thresholds;
+they should not be compared as if they were the same experiment.
+
+### Threshold Analysis
+
+Threshold tuning compared values from 0.30 to 0.70 using validation data.
+A threshold of 0.40 was selected as a candidate to balance attack detection
+and false alerts.
+
+The threshold may need adjustment for other datasets or operational needs.
+
+### Structured Alert Output
+
+Run the alert generator:
+
+```bash
+python scripts/generate_alerts.py
+```
+
+The script writes alerts to:
+
+`reports/ml_alerts.json`
+
+Each alert contains:
+
+- `session_id`: identifier for the dataset session
+- `alert_type`: detection category
+- `predicted_label`: predicted attack label
+- `attack_probability`: model-estimated probability
+- `threshold`: threshold used for the prediction
+- `severity`: illustrative severity based on probability bands
+
+The current implementation processes a held-out test split and is intended
+for evaluation, not continuous production monitoring.
+
+### Automated Tests
+
+Run all tests:
+
+```bash
+python -m pytest -v
+```
+
+The test suite covers brute-force detection behavior, dataset and feature
+checks, alert severity assignment, threshold configuration, and JSON report
+validation.
+
+### Limitations and Future Improvements
+
+- The dataset's label-generation process has not been independently verified.
+- Model probabilities do not prove that an attack occurred.
+- Severity levels are illustrative and are not a validated risk standard.
+- The dataset does not contain source IP addresses or event timestamps.
+- The current alert generator evaluates a held-out split rather than
+  processing live events.
+- Future work includes inference on new sessions, Windows event-log
+  ingestion, improved alert correlation, and evaluation on independent data.
