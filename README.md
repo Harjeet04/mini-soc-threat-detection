@@ -243,3 +243,52 @@ validation.
   processing live events.
 - Future work includes inference on new sessions, Windows event-log
   ingestion, improved alert correlation, and evaluation on independent data.
+
+## Model Training and Inference
+
+The project supports separate model training and session scoring.
+
+### Train the model
+
+```bash
+python scripts/train_model.py
+```
+
+The trained pipeline and its metadata are saved under `models/`.
+The serialized model is excluded from Git.
+
+### Score new sessions
+
+Prepare a CSV containing the model's required input features.
+The target column `attack_detected` should not be included.
+
+```bash
+python scripts/score_sessions.py --input data/sample_sessions.csv
+```
+
+Specify a custom output path if needed:
+
+```bash
+python scripts/score_sessions.py \
+  --input data/sample_sessions.csv \
+  --output reports/scored_sessions.json
+```
+
+The scorer loads the saved model without retraining and produces JSON
+predictions with session IDs, attack probabilities, labels, and illustrative
+severity levels.
+
+### Testing
+
+```bash
+python -m pytest -v
+```
+
+The test suite currently covers brute-force detection, dataset checks,
+alert generation, and saved-model inference.
+
+### Operational limitations
+
+The sample scoring file is derived from the public dataset and is intended
+for pipeline testing, not independent validation. The model's labels and
+performance have not been verified against real production attacks.

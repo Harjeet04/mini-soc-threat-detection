@@ -7,3 +7,10 @@ __pycache__/
 .pytest_cache/
 data/cybersecurity_intrusion_data.csv
 reports/ml_alerts.json
+models/*.joblib
+models/*.joblib
+models/*.joblib
+
+data/sample_sessions.csv
+reports/scored_sessions.json
+reports/test_scored_sessions.json

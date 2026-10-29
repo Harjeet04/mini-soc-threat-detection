@@ -1,0 +1,21 @@
+{
+  "model_type": "RandomForestClassifier",
+  "dataset": "cybersecurity_intrusion_data.csv",
+  "target": "attack_detected",
+  "features": [
+    "network_packet_size",
+    "protocol_type",
+    "login_attempts",
+    "session_duration",
+    "encryption_used",
+    "ip_reputation_score",
+    "failed_logins",
+    "browser_type",
+    "unusual_time_access"
+  ],
+  "threshold": 0.4,
+  "random_state": 42,
+  "training_records": 7152,
+  "held_out_records": 2385,
+  "note": "Initial saved model. Evaluation uses a held-out split. Dataset label-generation process is unverified."
+}
