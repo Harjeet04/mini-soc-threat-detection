@@ -18,3 +18,13 @@ reports/test_scored_sessions.json
 data/windows_auth_events.jsonl
 data/normalized_auth.jsonl
 reports/windows_alerts.json
+
+# Raw Windows Security logs
+data/windows_auth_events.jsonl
+data/*windows*auth*.jsonl
+
+# Normalized Windows authentication logs
+data/normalized_auth.jsonl
+
+# Generated Windows alert reports
+reports/windows_alerts.json
