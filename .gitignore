@@ -14,3 +14,7 @@ models/*.joblib
 data/sample_sessions.csv
 reports/scored_sessions.json
 reports/test_scored_sessions.json
+
+data/windows_auth_events.jsonl
+data/normalized_auth.jsonl
+reports/windows_alerts.json

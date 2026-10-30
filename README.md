@@ -292,3 +292,68 @@ alert generation, and saved-model inference.
 The sample scoring file is derived from the public dataset and is intended
 for pipeline testing, not independent validation. The model's labels and
 performance have not been verified against real production attacks.
+
+## Windows Security Log Integration
+
+The project includes a Windows authentication-log collection and detection pipeline.
+
+### Event Collection
+
+A PowerShell script collects Windows Security events:
+
+- Event ID 4624: Successful logon
+- Event ID 4625: Failed logon
+
+The collector extracts timestamps, account information, source IP addresses,
+computer names, logon types, and authentication status codes where available.
+
+### Log Normalization
+
+Windows events are converted into normalized JSONL records using:
+
+```bash
+python scripts/normalize_windows_logs.py
+```
+
+### Windows Brute-Force Detection
+
+Run the Windows-specific detector:
+
+```bash
+python scripts/detect_windows_bruteforce.py
+```
+
+Detection logic:
+
+- Five failed logons within five minutes.
+- Groups remote events by available source IP.
+- Groups local events by account, computer, and logon type.
+- Does not group events with insufficient attribution.
+
+Alerts are saved to:
+
+`reports/windows_alerts.json`
+
+### Testing
+
+The Windows detection module has automated tests covering:
+
+- Repeated failures from the same IP.
+- Repeated local account failures.
+- Successful logons being ignored.
+- Unattributed events being excluded.
+- Failed logons outside the five-minute window.
+
+Run the complete test suite:
+
+```bash
+python -m pytest -v
+```
+
+### Limitations
+
+- Windows event collection currently uses a limited sample of recent events.
+- Some Windows events do not contain a usable source IP.
+- Account-context detections can produce false positives.
+- Synthetic tests validate detection logic, not real-world attack detection.
+- The current implementation is a local prototype, not a production SIEM.
