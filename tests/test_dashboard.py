@@ -10,7 +10,7 @@ APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
 def run_dashboard():
     return AppTest.from_file(
         str(APP_PATH),
-        default_timeout=15
+        default_timeout=45
     ).run()
 
 

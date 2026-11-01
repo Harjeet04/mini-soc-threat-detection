@@ -28,3 +28,12 @@ data/normalized_auth.jsonl
 
 # Generated Windows alert reports
 reports/windows_alerts.json
+
+# Local SOC investigation records
+reports/investigations.json
+reports/investigations.json.tmp
+
+# Locally generated synthetic SOC demo data
+data/demo_auth_events.jsonl
+reports/demo_windows_alerts.json
+app_backup.py

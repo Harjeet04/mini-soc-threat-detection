@@ -1,10 +1,15 @@
-
 import json
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
+from scripts.investigations import (
+    get_alert_id,
+    load_investigations,
+    update_investigation,
+    find_related_events,
+)
 
 ROOT = Path(__file__).resolve().parent
 
@@ -12,6 +17,8 @@ WINDOWS_LOGS = ROOT / "data" / "normalized_auth.jsonl"
 WINDOWS_ALERTS = ROOT / "reports" / "windows_alerts.json"
 ML_ALERTS = ROOT / "reports" / "ml_alerts.json"
 SCORED_SESSIONS = ROOT / "reports" / "scored_sessions.json"
+DEMO_LOGS = ROOT / "data" / "demo_auth_events.jsonl"
+DEMO_ALERTS = ROOT / "reports" / "demo_windows_alerts.json"
 
 st.set_page_config(
     page_title="Mini SOC Dashboard",
@@ -58,6 +65,16 @@ def load_json(path):
     except (json.JSONDecodeError, OSError):
         return {}
 
+@st.cache_data(ttl=10)
+def load_json1(path):
+    if not path.exists():
+        return {}
+
+    try:
+        return json.loads(path.read_text(encoding="utf-8-sig"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+
 
 def get_records(data, preferred_key):
     if isinstance(data, list):
@@ -74,6 +91,21 @@ auth_df = load_jsonl(WINDOWS_LOGS)
 windows_alerts = get_records(
     load_json(WINDOWS_ALERTS), "alerts"
 )
+
+# Load synthetic demo data separately from real Windows data.
+demo_auth_df = load_jsonl(DEMO_LOGS)
+
+demo_windows_alerts = get_records(
+    load_json(DEMO_ALERTS), "alerts"
+)
+
+# Clearly label every synthetic alert.
+for alert in demo_windows_alerts:
+    alert["data_source"] = "synthetic_demo"
+    alert["simulation"] = True
+
+# Combine alerts for dashboard display and investigation.
+windows_alerts = windows_alerts + demo_windows_alerts
 
 scored_data = load_json(SCORED_SESSIONS)
 ml_alert_data = load_json(ML_ALERTS)
@@ -103,6 +135,21 @@ if not auth_df.empty:
                 auth_df[column].fillna("Unknown").astype(str)
             )
 
+# Prepare synthetic events using the same column types.
+if not demo_auth_df.empty:
+    if "timestamp" in demo_auth_df.columns:
+        demo_auth_df["timestamp"] = pd.to_datetime(
+            demo_auth_df["timestamp"],
+            utc=True,
+            errors="coerce",
+        )
+
+    for column in ["target_user", "source_ip", "logon_type"]:
+        if column in demo_auth_df.columns:
+            demo_auth_df[column] = (
+                demo_auth_df[column].fillna("Unknown").astype(str)
+            )
+
 
 # --------------------------------------------------
 # Sidebar
@@ -117,6 +164,7 @@ page = st.sidebar.radio(
         "Windows Authentication",
         "Security Alerts",
         "ML Detection",
+    "Investigation",
     ],
 )
 
@@ -560,6 +608,245 @@ elif page == "ML Detection":
 
         show_ml_investigation(ml_results)
 
+
+# --------------------------------------------------
+# Investigation Workflow
+# --------------------------------------------------
+
+elif page == "Investigation":
+
+    st.subheader("SOC Analyst Investigation Workspace")
+
+    st.caption(
+        "Review Windows detection alerts, inspect related events, "
+        "record analyst notes and manage investigation status."
+    )
+
+    # Load previously saved investigation records.
+    saved_records = load_investigations()
+
+    if not windows_alerts:
+        st.info(
+            "No Windows rule-based alerts are currently available "
+            "to investigate."
+        )
+
+        if saved_records:
+            st.subheader("Previously Saved Investigations")
+
+            saved_rows = []
+
+            for alert_id, record in saved_records.items():
+                alert = record.get("alert", {})
+
+                saved_rows.append({
+                    "Alert ID": alert_id,
+                    "Severity": alert.get("severity", "Unknown"),
+                    "Source IP": alert.get("source_ip") or "Unavailable",
+                    "Account": alert.get("target_user") or "Unknown",
+                    "Status": record.get("status", "Open"),
+                    "Updated": record.get("updated_at", "Unknown"),
+                })
+
+            st.dataframe(
+                pd.DataFrame(saved_rows),
+                use_container_width=True,
+            )
+        else:
+            st.info(
+                "Saved investigations will appear here after an alert "
+                "has been reviewed and saved."
+            )
+
+    else:
+        # Build stable alert identifiers.
+        alert_options = {
+            get_alert_id(alert): alert
+            for alert in windows_alerts
+        }
+
+        alert_ids = list(alert_options.keys())
+
+        selected_alert_id = st.selectbox(
+            "Select an alert",
+            alert_ids,
+            format_func=lambda alert_id: (
+                f"{alert_options[alert_id].get('severity', 'Unknown')} | "
+                f"{alert_options[alert_id].get('source_ip') or 'No source IP'} | "
+                f"{alert_options[alert_id].get('failure_count', 0)} failures"
+            ),
+        )
+
+        selected_alert = alert_options[selected_alert_id]
+        is_demo_alert = (
+            selected_alert.get("data_source") == "synthetic_demo"
+            or selected_alert.get("simulation") is True
+            )
+        
+        if is_demo_alert:
+            st.warning(
+            "DEMO ALERT — This is synthetic activity, "
+            "not a real Windows security incident."
+            )
+        else:
+            st.success("REAL WINDOWS ALERT")
+        # Load the saved record for this alert.
+        saved_records = load_investigations()
+        existing_record = saved_records.get(selected_alert_id, {})
+
+        st.divider()
+        st.markdown("### Alert Details")
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric(
+            "Severity",
+            str(selected_alert.get("severity", "Unknown")).upper(),
+        )
+
+        col2.metric(
+            "Failed Logons",
+            selected_alert.get("failure_count", 0),
+        )
+
+        col3.metric(
+            "Attribution",
+            selected_alert.get("attribution", "Unknown"),
+        )
+
+        st.write(
+            "**Detection rule:**",
+            selected_alert.get("rule", "Unknown"),
+        )
+
+        st.write(
+            "**Source IP:**",
+            selected_alert.get("source_ip") or "Unavailable",
+        )
+
+        st.write(
+            "**Target account:**",
+            selected_alert.get("target_user") or "Unknown",
+        )
+
+        st.write(
+            "**Computer:**",
+            selected_alert.get("computer") or "Unknown",
+        )
+
+        st.write(
+            "**Reason:**",
+            selected_alert.get("reason", "Not provided"),
+        )
+
+        st.write(
+            "**First seen:**",
+            selected_alert.get("first_seen", "Unknown"),
+        )
+
+        st.write(
+            "**Last seen:**",
+            selected_alert.get("last_seen", "Unknown"),
+        )
+
+        st.divider()
+        st.markdown("### Related Windows Events")
+        if is_demo_alert:
+            st.caption("Event source: Synthetic demonstration dataset")
+        # Use the correct event source for the selected alert.
+        related_source_df = (
+            demo_auth_df if is_demo_alert else auth_df
+        )
+
+        related_events = find_related_events(
+            selected_alert,
+            related_source_df,
+        )
+        if related_events.empty:
+            st.warning(
+                "No matching Windows events were found. "
+                "Check whether the alert contains a source IP or "
+                "account/computer attribution and matching timestamps."
+            )
+        else:
+            st.success(
+                f"{len(related_events)} related failed authentication "
+                "event(s) found."
+            )
+
+            st.dataframe(
+                related_events,
+                use_container_width=True,
+            )
+
+        st.divider()
+        st.markdown("### Investigation Record")
+
+        current_status = existing_record.get("status", "Open")
+
+        status_options = [
+            "Open",
+            "Investigating",
+            "Resolved",
+        ]
+
+        # Display the existing status, falling back safely if needed.
+        if current_status not in status_options:
+            current_status = "Open"
+
+        with st.form("investigation_form"):
+
+            new_status = st.selectbox(
+                "Investigation Status",
+                status_options,
+                index=status_options.index(current_status),
+            )
+
+            analyst_notes = st.text_area(
+                "Analyst Investigation Notes",
+                value=existing_record.get("notes", ""),
+                placeholder=(
+                    "Record what you investigated, "
+                    "what evidence you found, and your conclusion..."
+                ),
+                height=180,
+            )
+
+            submitted = st.form_submit_button(
+                "Save Investigation",
+                type="primary",
+            )
+
+            if submitted:
+                try:
+                    record = update_investigation(
+                        selected_alert,
+                        new_status,
+                        analyst_notes,
+                    )
+
+                    st.success(
+                        f"Investigation saved. Status: {record['status']}"
+                    )
+
+                    st.rerun()
+
+                except (OSError, ValueError) as error:
+                    st.error(
+                        f"Unable to save investigation: {error}"
+                    )
+
+        if existing_record:
+            st.caption(
+                f"Created: {existing_record.get('created_at', 'Unknown')}"
+            )
+
+            st.caption(
+                f"Last updated: {existing_record.get('updated_at', 'Unknown')}"
+            )
+
+            with st.expander("View saved investigation JSON"):
+                st.json(existing_record)
 
 # --------------------------------------------------
 # Footer
