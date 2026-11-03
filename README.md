@@ -268,3 +268,13 @@ These results apply only to the selected dataset and evaluation procedure. They 
 ## Disclaimer
 
 This project is intended for educational and defensive cybersecurity purposes. It is not a replacement for an enterprise SIEM or a validated security monitoring solution.
+
+## Latest Update: Password Spraying Detection
+
+- Added a password-spraying detection rule to the Windows authentication detection engine.
+- Detects when a single source IP targets **5 or more distinct accounts within 10 minutes**.
+- Generates high-severity alerts containing source IP, targeted accounts, failure count, timestamps, and investigation status.
+- Integrated password-spraying alerts with the existing brute-force detection engine.
+- Added synthetic test scenarios to validate password-spraying detection.
+
+**Validation:** Successfully detected a simulated password-spraying attack involving 5 accounts from a single source IP.
