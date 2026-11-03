@@ -474,7 +474,7 @@ if page == "Overview":
             ],
         }).set_index("Detection Source")
 
-        st.bar_chart(summary)
+        st.dataframe(summary, use_container_width=True)
 
     st.subheader("Recent Windows Events")
 
@@ -544,6 +544,7 @@ elif page == "Windows Authentication":
 # Security Alerts
 # --------------------------------------------------
 
+
 elif page == "Security Alerts":
 
     st.subheader("Security Alert Center")
@@ -552,21 +553,43 @@ elif page == "Security Alerts":
 
     col1.metric("Windows Rule Alerts", len(windows_alerts))
 
+    attack_predictions = [
+        item for item in ml_results
+        if item.get("predicted_label") == "attack"
+    ]
+
     col2.metric(
         "Offline ML Attack Predictions",
-        sum(
-            item.get("predicted_label") == "attack"
-            for item in ml_results
-        ),
+        len(attack_predictions)
     )
 
     st.divider()
 
-    show_windows_investigation(windows_alerts)
+    st.subheader("Windows Rule-Based Alerts")
+
+    if windows_alerts:
+        alert_df = pd.DataFrame(windows_alerts)
+        st.dataframe(
+            alert_df,
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+        st.info("No Windows rule-based alerts available.")
 
     st.divider()
 
-    show_ml_investigation(ml_results)
+    st.subheader("ML Attack Predictions")
+
+    if attack_predictions:
+        prediction_df = pd.DataFrame(attack_predictions)
+        st.dataframe(
+            prediction_df,
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+        st.info("No ML attack predictions available.")
 
 
 # --------------------------------------------------
