@@ -116,14 +116,86 @@ def detect_bruteforce(failures):
 
     return alerts
 
+def detect_password_spraying(failures):
+    alerts = []
+    events_by_ip = defaultdict(list)
 
+    # Combine failed logons from all groups by source IP.
+    for events in failures.values():
+        for event in events:
+            source_ip = event.get("source_ip")
+            target_user = event.get("target_user")
+
+            if source_ip and target_user:
+                events_by_ip[source_ip].append(event)
+
+    spray_threshold = 5
+    spray_window = timedelta(minutes=10)
+
+    for source_ip, events in events_by_ip.items():
+        events.sort(key=lambda event: event["timestamp"])
+
+        window = deque()
+        user_counts = defaultdict(int)
+        alert_created = False
+
+        for event in events:
+            timestamp = event["timestamp"]
+            target_user = event["target_user"]
+
+            window.append(event)
+            user_counts[target_user] += 1
+
+            # Remove events older than the 10-minute window.
+            while (
+                window
+                and timestamp - window[0]["timestamp"] > spray_window
+            ):
+                old_event = window.popleft()
+                old_user = old_event["target_user"]
+                user_counts[old_user] -= 1
+
+                if user_counts[old_user] == 0:
+                    del user_counts[old_user]
+
+            # Count distinct accounts, not total failed attempts.
+            if len(user_counts) >= spray_threshold:
+                alerts.append({
+                    "alert_type": "windows_password_spraying",
+                    "severity": "high",
+                    "status": "requires_investigation",
+                    "attribution": "source_ip",
+                    "source_ip": source_ip,
+                    "target_user": ", ".join(sorted(user_counts)),
+                    "computer": event.get("computer"),
+                    "logon_type": event.get("logon_type"),
+                    "failure_count": len(window),
+                    "unique_accounts": len(user_counts),
+                    "window_minutes": 10,
+                    "first_seen": window[0]["timestamp"].isoformat(),
+                    "last_seen": timestamp.isoformat(),
+                    "reason": (
+                        f"{len(user_counts)} distinct accounts targeted "
+                        "within ten minutes"
+                    ),
+                })
+
+                alert_created = True
+                break
+
+    return alerts
 def main():
     if not INPUT_FILE.exists():
         raise FileNotFoundError(f"Input file not found: {INPUT_FILE}")
 
     failures, invalid_count = load_failures(INPUT_FILE)
-    alerts = detect_bruteforce(failures)
 
+    # Run both detection rules.
+    brute_force_alerts = detect_bruteforce(failures)
+    password_spray_alerts = detect_password_spraying(failures)
+
+    # Combine alerts into one report.
+    alerts = brute_force_alerts + password_spray_alerts
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_FILE.write_text(
         json.dumps(alerts, indent=2) + "\n",
@@ -132,9 +204,10 @@ def main():
 
     print(f"Invalid or unattributed events skipped: {invalid_count}")
     print(f"Groups examined: {len(failures)}")
-    print(f"Windows alerts generated: {len(alerts)}")
+    print(f"Brute-force alerts generated: {len(brute_force_alerts)}")
+    print(f"Password-spraying alerts generated: {len(password_spray_alerts)}")
+    print(f"Total alerts generated: {len(alerts)}")
     print(f"Report saved to: {OUTPUT_FILE}")
-
 
 if __name__ == "__main__":
     main()

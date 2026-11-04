@@ -132,3 +132,75 @@ def test_empty_events_return_empty_result(sample_alert):
     )
 
     assert result.empty
+
+
+def test_unrelated_source_ip_is_excluded(sample_alert):
+    events = pd.DataFrame([
+        {
+            "timestamp": "2026-10-30T10:01:00Z",
+            "source_ip": "192.0.2.99",
+            "target_user": "testuser",
+            "computer": "TEST-PC",
+            "logon_type": "2",
+            "event_type": "authentication_failure",
+        }
+    ])
+
+    result = find_related_events(sample_alert, events)
+
+    assert result.empty
+
+
+def test_successful_logons_are_excluded(sample_alert):
+    events = pd.DataFrame([
+        {
+            "timestamp": "2026-10-30T10:01:00Z",
+            "source_ip": "192.0.2.10",
+            "target_user": "testuser",
+            "computer": "TEST-PC",
+            "logon_type": "2",
+            "event_type": "authentication_success",
+        }
+    ])
+
+    result = find_related_events(sample_alert, events)
+
+    assert result.empty
+
+
+def test_wrong_logon_type_is_excluded(sample_alert):
+    events = pd.DataFrame([
+        {
+            "timestamp": "2026-10-30T10:01:00Z",
+            "source_ip": "192.0.2.10",
+            "target_user": "testuser",
+            "computer": "TEST-PC",
+            "logon_type": "3",
+            "event_type": "authentication_failure",
+        }
+    ])
+
+    result = find_related_events(sample_alert, events)
+
+    assert result.empty
+
+
+def test_account_and_computer_matching_without_source_ip(sample_alert):
+    alert = sample_alert.copy()
+    alert.pop("source_ip")
+
+    events = pd.DataFrame([
+        {
+            "timestamp": "2026-10-30T10:01:00Z",
+            "source_ip": "192.0.2.10",
+            "target_user": "testuser",
+            "computer": "TEST-PC",
+            "logon_type": "2",
+            "event_type": "authentication_failure",
+        }
+    ])
+
+    result = find_related_events(alert, events)
+
+    assert len(result) == 1
+    assert result.iloc[0]["target_user"] == "testuser"
