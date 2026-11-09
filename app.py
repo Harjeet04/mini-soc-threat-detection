@@ -10,6 +10,9 @@ from scripts.investigations import (
     update_investigation,
     find_related_events,
 )
+from scripts.detect_success_after_failure import (
+    detect_success_after_failure,
+)
 
 ROOT = Path(__file__).resolve().parent
 
@@ -88,9 +91,21 @@ def get_records(data, preferred_key):
 
 auth_df = load_jsonl(WINDOWS_LOGS)
 
+# Detect failed logins followed by successful logins.
+if not auth_df.empty:
+    windows_sequence_alerts = detect_success_after_failure(
+        auth_df.to_dict(orient="records")
+    )
+else:
+    windows_sequence_alerts = []
+
+
 windows_alerts = get_records(
     load_json(WINDOWS_ALERTS), "alerts"
 )
+
+# Include alerts generated from normalized Windows events.
+windows_alerts.extend(windows_sequence_alerts)
 
 # Load synthetic demo data separately from real Windows data.
 demo_auth_df = load_jsonl(DEMO_LOGS)
