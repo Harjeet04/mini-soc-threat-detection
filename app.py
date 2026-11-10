@@ -13,6 +13,7 @@ from scripts.investigations import (
 from scripts.detect_success_after_failure import (
     detect_success_after_failure,
 )
+from scripts.enrich_alerts import enrich_alerts
 
 ROOT = Path(__file__).resolve().parent
 
@@ -121,6 +122,9 @@ for alert in demo_windows_alerts:
 
 # Combine alerts for dashboard display and investigation.
 windows_alerts = windows_alerts + demo_windows_alerts
+
+# Add local IP classification context to every alert.
+windows_alerts = enrich_alerts(windows_alerts)
 
 scored_data = load_json(SCORED_SESSIONS)
 ml_alert_data = load_json(ML_ALERTS)
@@ -584,6 +588,23 @@ elif page == "Security Alerts":
 
     if windows_alerts:
         alert_df = pd.DataFrame(windows_alerts)
+
+        # Extract IP enrichment details for dashboard display.
+        alert_df["ip_classification"] = alert_df["ip_context"].apply(
+            lambda x: x.get("classification", "unknown")
+            if isinstance(x, dict) else "unknown"
+        )
+
+        alert_df["ip_globally_routable"] = alert_df["ip_context"].apply(
+            lambda x: x.get("globally_routable", False)
+            if isinstance(x, dict) else False
+        )
+
+        alert_df["ip_reason"] = alert_df["ip_context"].apply(
+            lambda x: x.get("reason", "Not available")
+            if isinstance(x, dict) else "Not available"
+        )
+
         st.dataframe(
             alert_df,
             use_container_width=True,
@@ -591,7 +612,6 @@ elif page == "Security Alerts":
         )
     else:
         st.info("No Windows rule-based alerts available.")
-
     st.divider()
 
     st.subheader("ML Attack Predictions")
