@@ -204,3 +204,42 @@ def test_account_and_computer_matching_without_source_ip(sample_alert):
 
     assert len(result) == 1
     assert result.iloc[0]["target_user"] == "testuser"
+
+def test_failed_login_followed_by_success_returns_both_events(sample_alert):
+    alert = {
+        **sample_alert,
+        "alert_type": "failed_login_followed_by_success",
+        "source_ip": "192.168.29.87",
+        "target_user": "soc_test",
+        "computer": "LAPTOP-0Q173P7C",
+        "logon_type": "3",
+        "failure_time": "2026-11-15T06:01:01Z",
+        "success_time": "2026-11-15T06:01:19Z",
+    }
+
+    events = pd.DataFrame([
+        {
+            "timestamp": "2026-11-15T06:01:01Z",
+            "source_ip": "192.168.29.87",
+            "target_user": "soc_test",
+            "computer": "LAPTOP-0Q173P7C",
+            "logon_type": "3",
+            "event_type": "authentication_failure",
+        },
+        {
+            "timestamp": "2026-11-15T06:01:19Z",
+            "source_ip": "192.168.29.87",
+            "target_user": "soc_test",
+            "computer": "LAPTOP-0Q173P7C",
+            "logon_type": "3",
+            "event_type": "authentication_success",
+        },
+    ])
+
+    result = find_related_events(alert, events)
+
+    assert len(result) == 2
+    assert set(result["event_type"]) == {
+        "authentication_failure",
+        "authentication_success",
+    }

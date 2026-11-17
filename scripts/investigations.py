@@ -106,6 +106,7 @@ def update_investigation(alert, status, notes, path=INVESTIGATION_FILE):
     return record
 
 
+
 def find_related_events(alert, events):
     """Find authentication events related to a Windows alert."""
 
@@ -126,7 +127,6 @@ def find_related_events(alert, events):
         related = related[
             related["source_ip"].astype(str) == str(source_ip)
         ]
-
     elif target_user and computer:
         if not {"target_user", "computer"}.issubset(related.columns):
             return related.iloc[0:0]
@@ -135,7 +135,6 @@ def find_related_events(alert, events):
             (related["target_user"].astype(str) == str(target_user))
             & (related["computer"].astype(str) == str(computer))
         ]
-
     else:
         return related.iloc[0:0]
 
@@ -144,33 +143,35 @@ def find_related_events(alert, events):
             related["logon_type"].astype(str) == str(logon_type)
         ]
 
+    alert_type = alert.get("alert_type")
+
     if "event_type" in related.columns:
-        related = related[
-            related["event_type"] == "authentication_failure"
-        ]
+        if alert_type == "failed_login_followed_by_success":
+            related = related[
+                related["event_type"].isin([
+                    "authentication_failure",
+                    "authentication_success",
+                ])
+            ]
+        else:
+            related = related[
+                related["event_type"] == "authentication_failure"
+            ]
 
     if "timestamp" in related.columns:
-        timestamps = related["timestamp"]
+        timestamps = __import__("pandas").to_datetime(
+            related["timestamp"], utc=True, errors="coerce"
+        )
 
-        if not hasattr(timestamps.dtype, "tz"):
-            timestamps = __import__("pandas").to_datetime(
-                timestamps,
-                utc=True,
-                errors="coerce",
-            )
+        start_time = alert.get("failure_time") or alert.get("first_seen")
+        end_time = alert.get("success_time") or alert.get("last_seen")
 
-        first_seen = alert.get("first_seen")
-        last_seen = alert.get("last_seen")
+        if start_time and end_time:
+            pd = __import__("pandas")
+            start = pd.to_datetime(start_time, utc=True, errors="coerce")
+            end = pd.to_datetime(end_time, utc=True, errors="coerce")
 
-        if first_seen and last_seen:
-            start = __import__("pandas").to_datetime(
-                first_seen, utc=True, errors="coerce"
-            )
-            end = __import__("pandas").to_datetime(
-                last_seen, utc=True, errors="coerce"
-            )
-
-            if not __import__("pandas").isna(start) and not __import__("pandas").isna(end):
+            if not pd.isna(start) and not pd.isna(end):
                 related = related[
                     timestamps.between(start, end)
                 ]

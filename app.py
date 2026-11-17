@@ -18,6 +18,7 @@ from scripts.enrich_alerts import enrich_alerts
 ROOT = Path(__file__).resolve().parent
 
 WINDOWS_LOGS = ROOT / "data" / "normalized_auth.jsonl"
+SMB_TEST_LOGS = ROOT / "data" / "smb_test_normalized.jsonl"
 WINDOWS_ALERTS = ROOT / "reports" / "windows_alerts.json"
 ML_ALERTS = ROOT / "reports" / "ml_alerts.json"
 SCORED_SESSIONS = ROOT / "reports" / "scored_sessions.json"
@@ -90,7 +91,23 @@ def get_records(data, preferred_key):
     return []
 
 
+# Load normalized Windows authentication events.
 auth_df = load_jsonl(WINDOWS_LOGS)
+
+if not auth_df.empty:
+    auth_df["data_source"] = "normalized_windows_logs"
+
+# Load separately collected SMB test events.
+smb_test_df = load_jsonl(SMB_TEST_LOGS)
+
+if not smb_test_df.empty:
+    smb_test_df["data_source"] = "local_smb_test"
+
+# Combine datasets for authentication sequence detection.
+auth_df = pd.concat(
+    [auth_df, smb_test_df],
+    ignore_index=True
+)
 
 # Detect failed logins followed by successful logins.
 if not auth_df.empty:
@@ -828,14 +845,29 @@ elif page == "Investigation":
             )
         else:
             st.success(
-                f"{len(related_events)} related failed authentication "
-                "event(s) found."
+                f"{len(related_events)} related authentication event(s) found."
             )
 
-            st.dataframe(
-                related_events,
-                use_container_width=True,
+        if "event_type" in related_events.columns:
+            event_counts = related_events["event_type"].value_counts()
+
+            col1, col2 = st.columns(2)
+
+            col1.metric(
+                "Failed Authentication Events",
+                int(event_counts.get("authentication_failure", 0)),
             )
+
+            col2.metric(
+                "Successful Authentication Events",
+                int(event_counts.get("authentication_success", 0)),
+            )
+
+        st.dataframe(
+            related_events,
+            use_container_width=True,
+            hide_index=True,
+        )
 
         st.divider()
         st.markdown("### Investigation Record")
