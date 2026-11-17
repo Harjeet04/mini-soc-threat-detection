@@ -37,3 +37,7 @@ reports/investigations.json.tmp
 data/demo_auth_events.jsonl
 reports/demo_windows_alerts.json
 app_backup.py
+
+# Local Windows authentication test data
+data/smb_test_auth_events.jsonl
+data/smb_test_normalized.jsonl
